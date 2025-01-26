@@ -13,6 +13,7 @@ dependencies = [
 dev = [
     "dagster-webserver", 
     "pytest",
+    "polars",
 ]
 
 [build-system]
