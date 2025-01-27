@@ -2,9 +2,10 @@
 
 This is a [Dagster](https://dagster.io/) project scaffolded with [`dagster project scaffold`](https://docs.dagster.io/getting-started/create-new-project).
 
-## TODO
-- Read data from database using polars
-- save as csv
+## TODO 3/6
+- Read data from database using polars DONE
+- Hide secrets in env file DONE
+- save as parquet DONE
 - test
 - write dockerfile for docker-compose deployment
 - ci/cd
