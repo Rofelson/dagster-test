@@ -14,8 +14,9 @@ def imported_data():
     database_server = EnvVar("DATABASE_SERVER").get_value()
     uri = f"mysql://{database_username}:{database_password}@{database_server}:{database_port}/{database_name}"
     df = pl.read_database_uri(query, uri, engine="connectorx")
-    df.write_parquet("data/contacts.parquet")
-    return "Data loaded succesfully"
+    return df
+    # df.write_parquet("data/contacts.parquet")
+    # return "Data loaded succesfully"
 
 
 ## Tell Dagster about the assets that make up the pipeline
