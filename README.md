@@ -6,8 +6,8 @@ This is a [Dagster](https://dagster.io/) project scaffolded with [`dagster proje
 - Read data from database using polars DONE
 - Hide secrets in env file DONE
 - save as parquet DONE
+- write kube file for `podman kube play` DOING
 - explore podman quadlet deployment
-- write dockerfile for docker-compose deployment
 - ci/cd
 
 ## Getting started

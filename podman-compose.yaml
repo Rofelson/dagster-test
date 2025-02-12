@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: docker-example-pod
+spec:
+  containers:
+    # PostgreSQL Database Container
+    # This service runs the postgres DB used by dagster for run storage, schedule storage,
+    # and event log storage. Depending on the hardware you run this Compose on, you may be able
+    # to reduce the interval and timeout in the healthcheck to speed up your `docker-compose up` times.
+    - name: docker-example-postgresql
+      image: postgres:11
+      env:
+        - name: POSTGRES_USER
+          value: "postgres_user"
+        - name: POSTGRES_PASSWORD
+          value: "postgres_password"
+        - name: POSTGRES_DB
+          value: "postgres_db"
+      networks:
+        - docker_exemple_network
+      ports:
+        - containerPort: 5432
+      livenessProbe:
+        exec:
+          command: ["pg_isready", "-U", "postgres_user", "-d", "postgres_db"]
+        periodSeconds: 10
+        timeoutSeconds: 8
+        failureThreshold: 5
+
+    # User Code gRPC Server
+    # This service runs the gRPC server that loads your user code, in both dagster-webserver
+    # and dagster-daemon. By setting DAGSTER_CURRENT_IMAGE to its own image, we tell the
+    # run launcher to use this same image when launching runs in a new container as well.
+    # Multiple containers like this can be deployed separately - each just needs to run on
+    # its own port, and have its own entry in the workspace.yaml file that's loaded by the
+      # webserver.
+    - name: docker-example-user-code
+      image: dagster_test # path to the folder containing its dockerfile nmed `Dockerfile`
+      restartPolicy: Always
+      env:
+        - name: DAGSTER_POSTGRES_USER
+          value: "postgres_user"
+        - name: DAGSTER_POSTGRES_PASSWORD
+          value: "postgres_password"
+        - name: DAGSTER_POSTGRES_DB
+          value: "postgres_db"
+        - name: DAGSTER_CURRENT_IMAGE
+          value: "docker_example_user_code_image"
+      networks:
+        - docker_exemple_network
+
+    # Dagster Webserver Container
+    # This service runs dagster-webserver, which loads your user code from the user code container.
+    # Since our instance uses the QueuedRunCoordinator, any runs submitted from the webserver will be put on
+    # a queue and later dequeued and launched by dagster-daemon.
+    - name: docker-example-webserver
+      image: container_dagster_webdae # path to the folder containing its dockerfile nmed `Dockerfile`
+      command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-w", "workspace.yaml"]
+      ports:
+        - containerPort: 3000
+          hostPort: 3000
+      env:
+        - name: DAGSTER_POSTGRES_USER
+          value: "postgres_user"
+        - name: DAGSTER_POSTGRES_PASSWORD
+          value: "postgres_password"
+        - name: DAGSTER_POSTGRES_DB
+          value: "postgres_db"
+      networks:
+        - docker_exemple_network
+      volumeMounts: # Make docker client accessible so we can terminate containers from the webserver
+        - mountPath: /var/run/docker.sock
+          name: docker-sock
+        - mountPath: /tmp/io_manager_storage
+          name: io-manager-storage
+
+    # This service runs the dagster-dae<D-o>n process, which is responsible for taking runs
+    # off the queue and lauching them, as well as creating runs from schedules or sensors
+    - name: docker-example-daemon
+      image: container_dagster_webdae # path to the folder containing its dockerfile nmed `Dockerfile`
+      command: ["dagster-daemon", "run"]
+      ports:
+        - containerPort: 3000
+          hostPort: 3000
+      env:
+        - name: DAGSTER_POSTGRES_USER
+          value: "postgres_user"
+        - name: DAGSTER_POSTGRES_PASSWORD
+          value: "postgres_password"
+        - name: DAGSTER_POSTGRES_DB
+          value: "postgres_db"
+      networks:
+        - docker_exemple_network
+      volumeMounts: # Make docker client accessible so we can terminate containers from the webserver
+        - mountPath: /var/run/docker.sock
+          name: docker-sock
+  volumes:
+    - name: io-manager-storage
+      hostPath: 
+        path: /tmp/io_manager_storage
+    - name: docker-sock
+      hostPath: 
+        path: /run/user/1000/podman/podman.sock
